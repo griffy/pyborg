@@ -113,7 +113,7 @@ const byte BRAKE_INDEX = 2;
 
 // create arrays for O(1) lookup
 const byte NUM_WHEELS = 2;
-const byte WHEELS[NUM_WHEELS][] = {
+const byte WHEELS[NUM_WHEELS][3] = {
   { PWM_A, MOTOR_A, BRAKE_A },
   { PWM_B, MOTOR_B, BRAKE_B }
 };
