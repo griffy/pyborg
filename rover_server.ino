@@ -112,7 +112,8 @@ const byte MOTOR_INDEX = 1;
 const byte BRAKE_INDEX = 2;
 
 // create arrays for O(1) lookup
-const byte WHEELS[] = {
+const byte NUM_WHEELS = 2;
+const byte WHEELS[NUM_WHEELS][] = {
   { PWM_A, MOTOR_A, BRAKE_A },
   { PWM_B, MOTOR_B, BRAKE_B }
 };
@@ -135,7 +136,7 @@ Ticks ticks;
 
 void setupWheels() {
   // prepare the associated wheel pins for output
-  for (byte i = 0; i < sizeof(WHEELS) / 3; i++) {
+  for (byte i = 0; i < NUM_WHEELS; i++) {
     pinMode(WHEELS[i][PWM_INDEX], OUTPUT);
     pinMode(WHEELS[i][MOTOR_INDEX], OUTPUT);
     pinMode(WHEELS[i][BRAKE_INDEX], OUTPUT);
