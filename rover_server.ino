@@ -112,14 +112,14 @@ const byte MOTOR_INDEX = 1;
 const byte BRAKE_INDEX = 2;
 
 // create arrays for O(1) lookup
-const byte WHEELS = {
+const byte WHEELS[] = {
   { PWM_A, MOTOR_A, BRAKE_A },
   { PWM_B, MOTOR_B, BRAKE_B }
 };
 
-const byte DIRECTIONS = { HIGH, LOW };
+const byte DIRECTIONS[] = { HIGH, LOW };
 
-const byte SPEEDS = { SLOW, MEDIUM, FAST, FULL };
+const byte SPEEDS[] = { SLOW, MEDIUM, FAST, FULL };
 
 struct Ticks {
   long left;
