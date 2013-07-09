@@ -85,116 +85,79 @@ const byte PROTO_FLAG_STOP   = 4;
 const byte PROTO_FLAG_RESET  = 0;
 const byte PROTO_FLAG_READ   = 1;
 
-// rover / arduino constants
-const int PWM1   = 3;
-const int PWM2   = 11;
-const int MOTOR1 = 12;
-const int MOTOR2 = 13;
-const int BRAKE1 = 9;
-const int BRAKE2 = 8;
-// direction constants
-const int FORWARD  = 1;
-const int BACKWARD = 2;
+// rover / arduino pin constants
+const byte PWM_A   = 3;
+const byte PWM_B   = 11;
+const byte MOTOR_A = 12;
+const byte MOTOR_B = 13;
+const byte BRAKE_A = 9;
+const byte BRAKE_B = 8;
+
 // speed constants
-const int SLOW   = 65;
-const int MEDIUM = 129;
-const int FAST   = 193;
-const int FULL   = 255;
+const byte SLOW   = 85;
+const byte MEDIUM = 142;
+const byte FAST   = 199;
+const byte FULL   = 255;
 
-Encoder leftEncoder(2, 4);
-Encoder rightEncoder(18, 19);
+// direction constants
+const byte FORWARD  = 0;
+const byte BACKWARD = 1;
 
-byte request;
+// wheel constants
+const byte WHEEL_LEFT  = 0;
+const byte WHEEL_RIGHT = 1;
+
+const byte PWM_INDEX   = 0;
+const byte MOTOR_INDEX = 1;
+const byte BRAKE_INDEX = 2;
+
+// create arrays for O(1) lookup
+const byte WHEELS = {
+  { PWM_A, MOTOR_A, BRAKE_A },
+  { PWM_B, MOTOR_B, BRAKE_B }
+};
+
+const byte DIRECTIONS = { HIGH, LOW };
+
+const byte SPEEDS = { SLOW, MEDIUM, FAST, FULL };
 
 struct Ticks {
   long left;
   long right;
 };
 
+Encoder leftEncoder(2, 4);
+Encoder rightEncoder(18, 19);
+
+byte request;
+
 Ticks ticks;
 
-void setDirection(int motor, int motorDirection) {  
-  // set the direction on the motor
-  if (motorDirection == FORWARD)
-    digitalWrite(motor, HIGH);
-  else if (motorDirection == BACKWARD)
-    digitalWrite(motor, LOW);
+void setupWheels() {
+  // prepare the associated wheel pins for output
+  for (byte i = 0; i < sizeof(WHEELS) / 3; i++) {
+    pinMode(WHEELS[i][PWM_INDEX], OUTPUT);
+    pinMode(WHEELS[i][MOTOR_INDEX], OUTPUT);
+    pinMode(WHEELS[i][BRAKE_INDEX], OUTPUT);
+  }
+}
+
+void setDirection(byte wheel, byte direction) {
+  digitalWrite(WHEELS[wheel][MOTOR_INDEX], DIRECTIONS[direction]);
 }
   
-void move(int motor, int speed) {
-  if (speed == PROTO_FLAG_STOP) {
-    if (motor == MOTOR1) {
-      digitalWrite(PWM1, LOW);
-      digitalWrite(BRAKE1, HIGH);
-    } else if (motor == MOTOR2) {
-      digitalWrite(PWM2, LOW);
-      digitalWrite(BRAKE2, HIGH);
-    }
- 
-    return;
-  }
- 
-  if (motor == MOTOR1) {
-    digitalWrite(PWM1, HIGH);
-    digitalWrite(BRAKE1, LOW);
-    switch (speed) {
-    case PROTO_FLAG_SLOW:
-      analogWrite(PWM1, SLOW);
-      break;
-    case PROTO_FLAG_MEDIUM:
-      analogWrite(PWM1, MEDIUM);
-      break;
-    case PROTO_FLAG_FAST:
-      analogWrite(PWM1, FAST);
-      break;
-    case PROTO_FLAG_FULL: 
-      analogWrite(PWM1, FULL);
+void move(byte wheel, byte speed) {
+  switch (speed) {
+  case PROTO_FLAG_STOP:
+    // engage the brake
+    digitalWrite(WHEELS[wheel][BRAKE_INDEX], HIGH);
     break;
-    }
-  } else if (motor == MOTOR2) {
-    digitalWrite(PWM2, HIGH);
-    digitalWrite(BRAKE2, LOW);
-    switch (speed) {
-    case PROTO_FLAG_SLOW:
-      analogWrite(PWM2, SLOW);
-      break;
-    case PROTO_FLAG_MEDIUM:
-      analogWrite(PWM2, MEDIUM);
-      break;
-    case PROTO_FLAG_FAST:
-      analogWrite(PWM2, FAST);
-      break;
-    case PROTO_FLAG_FULL: 
-      analogWrite(PWM2, FULL);
-      break;
-    }
+  default:
+    // disengage the brake
+    digitalWrite(WHEELS[wheel][BRAKE_INDEX], LOW);
+    // set the speed
+    analogWrite(WHEELS[wheel][PWM_INDEX], SPEEDS[speed]);
   }
-}
-
-void setup() {
-  // setup channel A for output
-  pinMode(PWM1, OUTPUT);
-  pinMode(MOTOR1, OUTPUT); // motor pin
-  pinMode(BRAKE1, OUTPUT); // brake pin
-
-  // setup channel B for output
-  pinMode(PWM2, OUTPUT);
-  pinMode(MOTOR2, OUTPUT); // motor pin
-  pinMode(BRAKE2, OUTPUT); // brake pin
- 
-  // initialize i2c as slave
-  Wire.begin(SLAVE_ADDRESS);
- 
-  // define callbacks for i2c communication
-  Wire.onReceive(receiveData);
-  Wire.onRequest(sendData);
-}
-
-void loop() {
-  ticks.left = leftEncoder.read();
-  ticks.right = rightEncoder.read();
-
-  //delay(10);
 }
 
 void receiveData(int byteCount) {
@@ -205,38 +168,38 @@ void receiveData(int byteCount) {
     
     switch ((request >> 4) & B00001111) {
     case PROTO_FUNC_FORWARD:
-      setDirection(MOTOR1, FORWARD);
-      setDirection(MOTOR2, FORWARD);
+      setDirection(WHEEL_LEFT, FORWARD);
+      setDirection(WHEEL_RIGHT, FORWARD);
       speed = (request & B00001111);
-      move(MOTOR1, speed);
-      move(MOTOR2, speed);
+      move(WHEEL_LEFT, speed);
+      move(WHEEL_RIGHT, speed);
       break;
     case PROTO_FUNC_BACKWARD:
-      setDirection(MOTOR1, BACKWARD);
-      setDirection(MOTOR2, BACKWARD);
+      setDirection(WHEEL_LEFT, BACKWARD);
+      setDirection(WHEEL_RIGHT, BACKWARD);
       speed = (request & B00001111);
-      move(MOTOR1, speed);
-      move(MOTOR2, speed);
+      move(WHEEL_LEFT, speed);
+      move(WHEEL_RIGHT, speed);
       break;
     case PROTO_FUNC_LEFT_FORWARD:
-      setDirection(MOTOR1, FORWARD);
+      setDirection(WHEEL_LEFT, FORWARD);
       speed = (request & B00001111);
-      move(MOTOR1, speed);
+      move(WHEEL_LEFT, speed);
       break;
     case PROTO_FUNC_LEFT_BACKWARD:
-      setDirection(MOTOR1, BACKWARD);
+      setDirection(WHEEL_LEFT, BACKWARD);
       speed = (request & B00001111);
-      move(MOTOR1, speed);
+      move(WHEEL_LEFT, speed);
       break;
     case PROTO_FUNC_RIGHT_FORWARD:
-      setDirection(MOTOR2, FORWARD);
+      setDirection(WHEEL_RIGHT, FORWARD);
       speed = (request & B00001111);
-      move(MOTOR2, speed);
+      move(WHEEL_RIGHT, speed);
       break;
     case PROTO_FUNC_RIGHT_BACKWARD:
-      setDirection(MOTOR2, BACKWARD);
+      setDirection(WHEEL_RIGHT, BACKWARD);
       speed = (request & B00001111);
-      move(MOTOR2, speed);
+      move(WHEEL_RIGHT, speed);
       break;
     case PROTO_FUNC_LEFT_ENCODER:
       switch (request & B00001111) {
@@ -290,3 +253,18 @@ void sendData() {
     }
 }
 
+void setup() {
+  setupWheels();
+ 
+  // initialize i2c as slave
+  Wire.begin(SLAVE_ADDRESS);
+ 
+  // define callbacks for i2c communication
+  Wire.onReceive(receiveData);
+  Wire.onRequest(sendData);
+}
+
+void loop() {
+  ticks.left = leftEncoder.read();
+  ticks.right = rightEncoder.read();
+}
